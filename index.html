@@ -4,6 +4,10 @@
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<title>CardGen.io - Instant Card Generator</title>
+	<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+	<link rel="manifest" href="assets/site.webmanifest">
 
 	<!-- Tailwind CSS (CDN) -->
 	<script src="https://cdn.tailwindcss.com"></script>
@@ -15,7 +19,7 @@
 
 	<!-- html2canvas for image generation -->
 	<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
-	<!-- Vercel web analytics -->
+	<!-- Vercel web analytics (kept as-is) -->
 	<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 	<script defer src="/_vercel/insights/script.js"></script>
 
@@ -27,22 +31,26 @@
 			-moz-osx-font-smoothing: grayscale;
 			text-rendering: optimizeLegibility;
 		}
-		/* Hide focus outlines on swatch buttons while keeping accessibility */
-		.swatch:focus-visible {
+		/* Keep focus styles accessible for keyboard users */
+		.swatch:focus-visible, .grad-swatch:focus-visible, .ratioBtn:focus-visible, .alignBtn:focus-visible {
 			outline: 2px solid #6366f1; /* indigo-500 */
 			outline-offset: 2px;
 		}
+		/* Modal backdrop */
+		.modal-backdrop {
+			backdrop-filter: blur(4px);
+		}
 	</style>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-800">
+<body class="min-h-screen bg-slate-50 text-slate-800 lg:overflow-hidden">
 	<!-- Header -->
 	<header class="w-full border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-40">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
 			<div class="flex items-center gap-3">
-				<img src="cardgenio.png" alt="CardGen.io" class="h-9 w-9 rounded-lg object-contain bg-white border border-slate-200" />
+				<img src="assets/LogoNoName.png" alt="CardGen.io" class="h-9 w-9 rounded-lg object-contain bg-white border border-slate-200" />
 				<div>
 					<h1 class="text-xl font-semibold tracking-tight">CardGen.io</h1>
-					<p class="text-xs text-slate-500 -mt-0.5">Instant card generator for social posts</p>
+					<p class="text-xs text-slate-500 -mt-0.5">Instant card generator for social posts • v1.1.0</p>
 				</div>
 			</div>
 			<div class="hidden sm:flex items-center gap-3 text-xs text-slate-500">
@@ -54,301 +62,348 @@
 	</header>
 
 	<!-- Main -->
-	<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
-		<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8">
+	<main class="lg:max-w-7xl lg:mx-auto lg:px-4 lg:py-10">
+		<div class="grid grid-cols-1 xl:grid-cols-3 lg:gap-8">
 			<!-- Preview Column -->
-			<section class="xl:col-span-2">
-				<div class="mb-4 flex items-center justify-between">
-					<h2 class="text-lg font-semibold">Live Preview</h2>
-					<div id="aspectLabel" class="text-xs text-slate-500">Aspect 1:1 • What you see is what you get</div>
-				</div>
-
-				<!-- Preview Card Canvas (square) -->
-				<div class="relative">
-					<div id="cardCanvas"
-						class="aspect-square w-full bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-200 relative flex">
-						<!-- Background layer (solid or gradient inline styles applied via JS) -->
-						<div id="bgLayer" class="absolute inset-0"></div>
-
-						<!-- Foreground Content -->
-						<div class="relative z-10 w-full h-full p-6 sm:p-8 lg:p-12 flex">
-							<div class="w-full h-full flex flex-col justify-center items-center text-center">
-								<!-- Main Text -->
-								<div id="mainText"
-									class="whitespace-pre-wrap break-words max-w-[90%] mx-auto font-serif"
-									style="font-family: 'Lora', serif; color: #0f172a; font-size: 40px; line-height: 1.25;">
-									Your inspiring quote goes here. Make it short and impactful.
-								</div>
-
-								<!-- Author / Handle -->
-								<div id="authorText"
-									class="mt-6 text-slate-700"
-									style="font-family: 'Inter', sans-serif; font-size: 20px; line-height: 1.25; color: #334155;">
-									— @cardgenio
-								</div>
-							</div>
+			<section class="xl:col-span-2 sticky top-10 h-[50vh] bg-slate-100/80 backdrop-blur-sm z-10 flex items-center justify-center p-4 border-b lg:border-none border-slate-200 lg:relative lg:h-auto lg:bg-transparent lg:backdrop-blur-none lg:flex lg:items-center lg:justify-center lg:p-0">
+				<!-- Card Canvas -->
+				<div id="cardCanvas" class="relative w-full max-w-md bg-white rounded-2xl shadow-lg overflow-hidden" style="aspect-ratio: 1 / 1;">
+					<!-- Background Layer -->
+					<div id="bgLayer" class="absolute inset-0"></div>
+					<!-- Image Preview Layer -->
+					<div id="preview-image" class="absolute inset-0 bg-cover bg-center"></div>
+					<!-- Overlay Layer -->
+					<div id="preview-overlay" class="absolute inset-0"></div>
+					<!-- Content Container -->
+					<div class="relative z-10 flex flex-col justify-center items-center h-full p-8">
+						<!-- Main Text -->
+						<div id="mainText" class="text-center font-bold mb-4 font-serif" style="font-family: 'Lora', serif; font-size: 40px; line-height:1.25;">
+							Your inspiring quote goes here. Make it short and impactful.
 						</div>
-
+						<!-- Author Text -->
+						<div id="authorText" class="text-center" style="font-family: 'Inter', sans-serif;">
+							— @cardgenio
+						</div>
 						<!-- Watermark -->
-						<div id="watermark"
-							class="absolute bottom-3 right-3 text-[10px] sm:text-xs px-2 py-1 rounded bg-black/40 text-white select-none">
-							CardGen.io
-						</div>
+						<div id="watermark" class="absolute bottom-4 right-4 text-xs text-gray-400 opacity-50 select-none">cardgenio</div>
 					</div>
-				</div>
-
-				<!-- Orientation Selector -->
-				<div class="mt-4">
-					<div class="text-xs text-slate-500 mb-2">Orientations</div>
-					<div class="flex flex-wrap gap-2">
-						<button class="ratioBtn px-3 py-1.5 rounded-md border border-slate-200 bg-slate-100 text-slate-700 text-sm" data-ratio="1:1">1:1</button>
-						<button class="ratioBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm" data-ratio="4:5">4:5</button>
-						<button class="ratioBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm" data-ratio="3:4">3:4</button>
-						<button class="ratioBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm" data-ratio="2:3">2:3</button>
-						<button class="ratioBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm" data-ratio="9:11">9:11</button>
-						<button class="ratioBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm" data-ratio="9:16">9:16</button>
-						<button class="ratioBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm" data-ratio="16:9">16:9</button>
-						<button class="ratioBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm" data-ratio="1.91:1">1.91:1</button>
-						<button class="ratioBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm" data-ratio="5:4">5:4</button>
-					</div>
-				</div>
-
-				<!-- Actions -->
-				<div class="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-					<button id="downloadBtn"
-						class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800 transition shadow-sm">
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v12m0 0l-3.5-3.5M12 16l3.5-3.5M4 20h16"/>
-						</svg>
-						Download PNG (Hi-Res)
-					</button>
-					<button id="resetBtn"
-						class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition border border-slate-200">
-						Reset
-					</button>
-
-					<!-- Ad Placeholder (non-intrusive) -->
-					<!-- <div class="sm:ml-auto w-full sm:w-72 h-12 rounded-md border border-dashed border-slate-300 bg-white text-slate-400 grid place-items-center text-xs">
-						Ad placeholder
-					</div> -->
 				</div>
 			</section>
 
 			<!-- Controls Column -->
-			<aside class="xl:col-span-1">
-				<div class="mb-4">
-					<h2 class="text-lg font-semibold">Editor</h2>
-					<p class="text-xs text-slate-500">Customize text, fonts, and background</p>
-				</div>
-
-				<div class="space-y-6">
-					<!-- Text Inputs -->
-					<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
-						<h3 class="text-sm font-semibold mb-3">Text</h3>
-						<label class="block text-xs text-slate-500 mb-1" for="quoteInput">Main text</label>
-						<textarea id="quoteInput" rows="4"
-							class="w-full resize-y rounded-md border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-							placeholder="Type your quote, tip, or poem...">Your inspiring quote goes here. Make it short and impactful.</textarea>
-
-						<div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-							<div>
-								<label class="block text-xs text-slate-500 mb-1" for="authorInput">Author / handle</label>
-								<input id="authorInput" type="text"
-									class="w-full rounded-md border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-									placeholder="@yourhandle or — Author name" value="— @cardgenio" />
-							</div>
-							<div class="flex items-center gap-2 pt-5 sm:pt-0">
-								<input id="authorItalic" type="checkbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-								<label for="authorItalic" class="text-xs text-slate-600">Italic author</label>
-							</div>
-						</div>
+			<aside class="xl:col-span-1 mt-14 lg:mt-0 bg-white lg:bg-transparent px-4 sm:px-6 lg:px-0 pt-6 lg:pt-0 rounded-t-2xl lg:rounded-none shadow-2xl lg:shadow-none lg:h-[calc(100vh-150px)] lg:overflow-y-auto lg:pl-8 lg:border-l lg:border-slate-200/80">
+				<div class="pb-24">
+					<div class="mb-4">
+						<h2 class="text-lg font-semibold">Editor</h2>
+						<p class="text-xs text-slate-500">Customize text, fonts, and background</p>
 					</div>
 
-					<!-- Font Controls -->
-					<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
-						<h3 class="text-sm font-semibold mb-3">Typography</h3>
+					<div class="space-y-6">
+						<!-- Text Inputs -->
+						<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
+							<h3 class="text-sm font-semibold mb-3">Text</h3>
+							<label class="block text-xs text-slate-500 mb-1" for="quoteInput">Main text</label>
+							<textarea id="quoteInput" rows="4"
+								class="w-full resize-y rounded-md border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+								placeholder="Type your quote, tip, or poem...">Your inspiring quote goes here. Make it short and impactful.</textarea>
 
-						<div class="grid grid-cols-1 gap-4">
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+							<div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
 								<div>
-									<label class="block text-xs text-slate-500 mb-1" for="fontSelect">Main font</label>
-									<select id="fontSelect"
-										class="w-full rounded-md border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-										<option value="'Lora', serif" selected>Lora (serif)</option>
-										<option value="'Playfair Display', serif">Playfair Display (serif)</option>
-										<option value="'Merriweather', serif">Merriweather (serif)</option>
-										<option value="'Source Serif 4', serif">Source Serif 4 (serif)</option>
-										<option value="'Inter', sans-serif">Inter (sans)</option>
-										<option value="'Poppins', sans-serif">Poppins (sans)</option>
-										<option value="'Montserrat', sans-serif">Montserrat (sans)</option>
-										<option value="'DM Sans', sans-serif">DM Sans (sans)</option>
-										<option value="'Work Sans', sans-serif">Work Sans (sans)</option>
-										<option value="'Roboto Mono', monospace">Roboto Mono (mono)</option>
-									</select>
+									<label class="block text-xs text-slate-500 mb-1" for="authorInput">Author / handle</label>
+									<input id="authorInput" type="text"
+										class="w-full rounded-md border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+										placeholder="@yourhandle or — Author name" value="— @cardgenio" />
 								</div>
-								<div>
-									<label class="block text-xs text-slate-500 mb-1" for="authorFontSelect">Author font</label>
-									<select id="authorFontSelect"
-										class="w-full rounded-md border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-										<option value="'Inter', sans-serif" selected>Inter (sans)</option>
-										<option value="'Poppins', sans-serif">Poppins (sans)</option>
-										<option value="'Montserrat', sans-serif">Montserrat (sans)</option>
-										<option value="'DM Sans', sans-serif">DM Sans (sans)</option>
-										<option value="'Work Sans', sans-serif">Work Sans (sans)</option>
-										<option value="'Lora', serif">Lora (serif)</option>
-										<option value="'Playfair Display', serif">Playfair Display (serif)</option>
-										<option value="'Merriweather', serif">Merriweather (serif)</option>
-										<option value="'Source Serif 4', serif">Source Serif 4 (serif)</option>
-										<option value="'Roboto Mono', monospace">Roboto Mono (mono)</option>
-									</select>
+								<div class="flex items-center gap-2 pt-5 sm:pt-0">
+									<input id="authorItalic" type="checkbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+									<label for="authorItalic" class="text-xs text-slate-600">Italic author</label>
+								</div>
+							</div>
+						</div>
+
+						<!-- Font Controls -->
+						<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
+							<h3 class="text-sm font-semibold mb-3">Typography</h3>
+
+							<div class="grid grid-cols-1 gap-4">
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<div>
+										<label class="block text-xs text-slate-500 mb-1" for="fontSelect">Main font</label>
+										<select id="fontSelect"
+											class="w-full rounded-md border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+											<option value="'Lora', serif" selected>Lora (serif)</option>
+											<option value="'Playfair Display', serif">Playfair Display (serif)</option>
+											<option value="'Merriweather', serif">Merriweather (serif)</option>
+											<option value="'Source Serif 4', serif">Source Serif 4 (serif)</option>
+											<option value="'Inter', sans-serif">Inter (sans)</option>
+											<option value="'Poppins', sans-serif">Poppins (sans)</option>
+											<option value="'Montserrat', sans-serif">Montserrat (sans)</option>
+											<option value="'DM Sans', sans-serif">DM Sans (sans)</option>
+											<option value="'Work Sans', sans-serif">Work Sans (sans)</option>
+											<option value="'Roboto Mono', monospace">Roboto Mono (mono)</option>
+										</select>
+									</div>
+									<div>
+										<label class="block text-xs text-slate-500 mb-1" for="authorFontSelect">Author font</label>
+										<select id="authorFontSelect"
+											class="w-full rounded-md border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+											<option value="'Inter', sans-serif" selected>Inter (sans)</option>
+											<option value="'Poppins', sans-serif">Poppins (sans)</option>
+											<option value="'Montserrat', sans-serif">Montserrat (sans)</option>
+											<option value="'DM Sans', sans-serif">DM Sans (sans)</option>
+											<option value="'Work Sans', sans-serif">Work Sans (sans)</option>
+											<option value="'Lora', serif">Lora (serif)</option>
+											<option value="'Playfair Display', serif">Playfair Display (serif)</option>
+											<option value="'Merriweather', serif">Merriweather (serif)</option>
+											<option value="'Source Serif 4', serif">Source Serif 4 (serif)</option>
+											<option value="'Roboto Mono', monospace">Roboto Mono (mono)</option>
+										</select>
+									</div>
+								</div>
+
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<div>
+										<label class="flex items-center justify-between text-xs text-slate-500 mb-1">
+											<span>Main size</span>
+											<span><span id="fontSizeValue">40</span> px</span>
+										</label>
+										<input id="fontSize" type="range" min="18" max="96" step="1" value="40"
+											class="w-full accent-indigo-600">
+									</div>
+									<div>
+										<label class="flex items-center justify-between text-xs text-slate-500 mb-1">
+											<span>Author size</span>
+											<span><span id="authorFontSizeValue">20</span> px</span>
+										</label>
+										<input id="authorFontSize" type="range" min="12" max="48" step="1" value="20"
+											class="w-full accent-indigo-600">
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Aspect Ratio -->
+						<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
+							<div class="flex items-center justify-between mb-3">
+								<h3 class="text-sm font-semibold">Aspect Ratio</h3>
+								<span id="aspectLabel" class="text-xs text-slate-500">Aspect 1:1 • What you see is what you get</span>
+							</div>
+							<div class="flex flex-wrap gap-2">
+								<button class="ratioBtn px-3 py-1.5 text-sm rounded-md bg-white border border-slate-200" data-ratio="1:1">1:1</button>
+								<button class="ratioBtn px-3 py-1.5 text-sm rounded-md bg-white border border-slate-200" data-ratio="4:5">4:5</button>
+								<button class="ratioBtn px-3 py-1.5 text-sm rounded-md bg-white border border-slate-200" data-ratio="5:4">5:4</button>
+								<button class="ratioBtn px-3 py-1.5 text-sm rounded-md bg-white border border-slate-200" data-ratio="3:4">3:4</button>
+								<button class="ratioBtn px-3 py-1.5 text-sm rounded-md bg-white border border-slate-200" data-ratio="2:3">2:3</button>
+								<button class="ratioBtn px-3 py-1.5 text-sm rounded-md bg-white border border-slate-200" data-ratio="4:3">4:3</button>
+								<button class="ratioBtn px-3 py-1.5 text-sm rounded-md bg-white border border-slate-200" data-ratio="16:9">16:9</button>
+								<button class="ratioBtn px-3 py-1.5 text-sm rounded-md bg-white border border-slate-200" data-ratio="9:16">9:16</button>
+								<button class="ratioBtn px-3 py-1.5 text-sm rounded-md bg-white border border-slate-200" data-ratio="1.91:1">1.91:1</button>
+								<button class="ratioBtn px-3 py-1.5 text-sm rounded-md bg-white border border-slate-200" data-ratio="9:11">9:11</button>
+								<button class="ratioBtn px-3 py-1.5 text-sm rounded-md bg-white border border-slate-200" data-ratio="21:9">21:9</button>
+							</div>
+						</div>
+
+						<!-- Background Controls -->
+						<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
+							<h3 class="text-sm font-semibold mb-3">Background</h3>
+
+							<!-- Image Upload -->
+							<div class="mb-4">
+								<label class="block text-xs text-slate-500 mb-1" for="imageUpload">Upload image</label>
+								<input id="imageUpload" type="file" accept="image/*"
+									class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+							</div>
+
+							<!-- Color/Gradient Controls -->
+							<div id="colorControls">
+								<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+									<div>
+										<label class="block text-xs text-slate-500 mb-1" for="textColor">Main text</label>
+										<input id="textColor" type="color" value="#0f172a"
+											class="w-full h-9 rounded-md border border-slate-200 cursor-pointer">
+									</div>
+									<div>
+										<label class="block text-xs text-slate-500 mb-1" for="authorColor">Author text</label>
+										<input id="authorColor" type="color" value="#334155"
+											class="w-full h-9 rounded-md border border-slate-200 cursor-pointer">
+									</div>
+									<div>
+										<label class="block text-xs text-slate-500 mb-1" for="bgColor">Background (solid)</label>
+										<input id="bgColor" type="color" value="#ffffff"
+											class="w-full h-9 rounded-md border border-slate-200 cursor-pointer">
+									</div>
+								</div>
+
+								<!-- Background Mode -->
+								<div class="mt-4 flex flex-wrap items-center gap-3">
+									<span class="text-xs text-slate-500">Background:</span>
+									<label class="inline-flex items-center gap-2 text-sm">
+										<input type="radio" name="bgType" value="solid" class="text-indigo-600" checked>
+										<span>Solid</span>
+									</label>
+									<label class="inline-flex items-center gap-2 text-sm">
+										<input type="radio" name="bgType" value="gradient" class="text-indigo-600">
+										<span>Gradient</span>
+									</label>
+								</div>
+
+								<!-- Pre-made Palettes -->
+								<div class="mt-4">
+									<div class="flex items-center justify-between mb-2">
+										<label class="text-xs text-slate-500">Palettes</label>
+										<button id="invertColors" class="text-xs text-indigo-600 hover:underline">Invert text colors</button>
+									</div>
+									<div id="solidPalettes" class="grid grid-cols-5 gap-2">
+										<!-- Each swatch sets a solid background + text combos -->
+										<button class="swatch h-9 rounded border border-slate-200"
+											title="Classic on white" data-palette='{"bg":"#ffffff","text":"#0f172a","author":"#334155"}'
+											style="background: linear-gradient(90deg,#ffffff 50%, #0f172a 50%);"></button>
+										<button class="swatch h-9 rounded border border-slate-200"
+											title="Dark mode" data-palette='{"bg":"#0f172a","text":"#ffffff","author":"#cbd5e1"}'
+											style="background: linear-gradient(90deg,#0f172a 50%, #ffffff 50%);"></button>
+										<button class="swatch h-9 rounded border border-slate-200"
+											title="Indigo" data-palette='{"bg":"#eef2ff","text":"#3730a3","author":"#4338ca"}'
+											style="background: linear-gradient(90deg,#eef2ff 50%, #3730a3 50%);"></button>
+										<button class="swatch h-9 rounded border border-slate-200"
+											title="Emerald" data-palette='{"bg":"#ecfdf5","text":"#065f46","author":"#047857"}'
+											style="background: linear-gradient(90deg,#ecfdf5 50%, #065f46 50%);"></button>
+										<button class="swatch h-9 rounded border border-slate-200"
+											title="Rose" data-palette='{"bg":"#fff1f2","text":"#9f1239","author":"#be123c"}'
+											style="background: linear-gradient(90deg,#fff1f2 50%, #9f1239 50%);"></button>
+									</div>
+								</div>
+
+								<!-- Gradient Swatches -->
+								<div class="mt-4">
+									<label class="block text-xs text-slate-500 mb-2">Gradients</label>
+									<div id="gradientPalettes" class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+										<button class="grad-swatch h-9 rounded border border-slate-200"
+											title="Indigo → Purple"
+											data-gradient="linear-gradient(135deg,#6366f1,#a855f7)"></button>
+										<button class="grad-swatch h-9 rounded border border-slate-200"
+											title="Blue → Cyan"
+											data-gradient="linear-gradient(135deg,#3b82f6,#06b6d4)"></button>
+										<button class="grad-swatch h-9 rounded border border-slate-200"
+											title="Emerald → Teal"
+											data-gradient="linear-gradient(135deg,#10b981,#14b8a6)"></button>
+										<button class="grad-swatch h-9 rounded border border-slate-200"
+											title="Orange → Rose"
+											data-gradient="linear-gradient(135deg,#f59e0b,#f43f5e)"></button>
+										<button class="grad-swatch h-9 rounded border border-slate-200"
+											title="Slate → Zinc"
+											data-gradient="linear-gradient(135deg,#64748b,#3f3f46)"></button>
+									</div>
 								</div>
 							</div>
 
+							<!-- Image Controls (hidden when no image) -->
+							<div id="imageControls" class="hidden mt-4">
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<div>
+										<label class="flex items-center justify-between text-xs text-slate-500 mb-1">
+											<span>Blur</span>
+											<span><span id="blurValue">0</span> px</span>
+										</label>
+										<input id="imageBlur" type="range" min="0" max="10" step="0.5" value="0"
+											class="w-full accent-indigo-600">
+									</div>
+									<div>
+										<label class="flex items-center justify-between text-xs text-slate-500 mb-1">
+											<span>Overlay</span>
+											<span><span id="overlayValue">0</span>%</span>
+										</label>
+										<input id="overlayOpacity" type="range" min="0" max="100" step="5" value="0"
+											class="w-full accent-indigo-600">
+									</div>
+								</div>
+
+								<!-- Profile picture mode controls (optional) -->
+								<div id="profilePictureControls" class="hidden mt-3 space-y-2">
+									<label class="inline-flex items-center gap-2 text-sm">
+										<input id="profilePictureMode" type="checkbox" class="text-indigo-600">
+										<span class="text-xs text-slate-500">Profile picture mode (circular crop)</span>
+									</label>
+									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+										<div>
+											<label class="flex items-center justify-between text-xs text-slate-500 mb-1">
+												<span>Profile size</span>
+												<span><span id="profileSizeValue">128</span> px</span>
+											</label>
+											<input id="profileSize" type="range" min="48" max="400" step="1" value="128"
+												class="w-full accent-indigo-600">
+										</div>
+										<div class="flex items-end">
+											<button id="removeImageBtn"
+												class="w-full px-3 py-2 rounded-md bg-red-50 text-red-700 hover:bg-red-100 transition text-sm">
+												Remove Image
+											</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Layout Tweaks -->
+						<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
+							<h3 class="text-sm font-semibold mb-3">Layout</h3>
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 								<div>
 									<label class="flex items-center justify-between text-xs text-slate-500 mb-1">
-										<span>Main size</span>
-										<span><span id="fontSizeValue">40</span> px</span>
+										<span>Padding</span>
+										<span><span id="padValue">10</span> %</span>
 									</label>
-									<input id="fontSize" type="range" min="18" max="96" step="1" value="40"
+									<input id="padRange" type="range" min="4" max="16" step="1" value="10"
 										class="w-full accent-indigo-600">
 								</div>
 								<div>
 									<label class="flex items-center justify-between text-xs text-slate-500 mb-1">
-										<span>Author size</span>
-										<span><span id="authorFontSizeValue">20</span> px</span>
+										<span>Line height</span>
+										<span><span id="lhValue">1.25</span> ×</span>
 									</label>
-									<input id="authorFontSize" type="range" min="12" max="48" step="1" value="20"
+									<input id="lhRange" type="range" min="1.1" max="1.8" step="0.05" value="1.25"
 										class="w-full accent-indigo-600">
 								</div>
 							</div>
-						</div>
-					</div>
-
-					<!-- Color Controls -->
-					<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
-						<h3 class="text-sm font-semibold mb-3">Colors</h3>
-
-						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-							<div>
-								<label class="block text-xs text-slate-500 mb-1" for="textColor">Main text</label>
-								<input id="textColor" type="color" value="#0f172a"
-									class="w-full h-9 rounded-md border border-slate-200 cursor-pointer">
-							</div>
-							<div>
-								<label class="block text-xs text-slate-500 mb-1" for="authorColor">Author text</label>
-								<input id="authorColor" type="color" value="#334155"
-									class="w-full h-9 rounded-md border border-slate-200 cursor-pointer">
-							</div>
-							<div>
-								<label class="block text-xs text-slate-500 mb-1" for="bgColor">Background (solid)</label>
-								<input id="bgColor" type="color" value="#ffffff"
-									class="w-full h-9 rounded-md border border-slate-200 cursor-pointer">
+							<div class="mt-3">
+								<label class="block text-xs text-slate-500 mb-1">Text alignment</label>
+								<div class="flex gap-2">
+									<button data-align="left" class="alignBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm">Left</button>
+									<button data-align="center" class="alignBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm">Center</button>
+									<button data-align="right" class="alignBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm">Right</button>
+								</div>
 							</div>
 						</div>
 
-						<!-- Background Mode -->
-						<div class="mt-4 flex flex-wrap items-center gap-3">
-							<span class="text-xs text-slate-500">Background:</span>
-							<label class="inline-flex items-center gap-2 text-sm">
-								<input type="radio" name="bgMode" value="solid" class="text-indigo-600" checked>
-								<span>Solid</span>
-							</label>
-							<label class="inline-flex items-center gap-2 text-sm">
-								<input type="radio" name="bgMode" value="gradient" class="text-indigo-600">
-								<span>Gradient</span>
-							</label>
-						</div>
-
-						<!-- Pre-made Palettes -->
-						<div class="mt-4">
-							<div class="flex items-center justify-between mb-2">
-								<label class="text-xs text-slate-500">Palettes</label>
-								<button id="invertColors" class="text-xs text-indigo-600 hover:underline">Invert text colors</button>
-							</div>
-							<div class="grid grid-cols-5 gap-2">
-								<!-- Each swatch sets a solid background + text combos -->
-								<button class="swatch h-9 rounded border border-slate-200"
-									title="Classic on white" data-palette='{"bg":"#ffffff","text":"#0f172a","author":"#334155"}'
-									style="background: linear-gradient(90deg,#ffffff 50%, #0f172a 50%);"></button>
-								<button class="swatch h-9 rounded border border-slate-200"
-									title="Dark mode" data-palette='{"bg":"#0f172a","text":"#ffffff","author":"#cbd5e1"}'
-									style="background: linear-gradient(90deg,#0f172a 50%, #ffffff 50%);"></button>
-								<button class="swatch h-9 rounded border border-slate-200"
-									title="Indigo" data-palette='{"bg":"#eef2ff","text":"#3730a3","author":"#4338ca"}'
-									style="background: linear-gradient(90deg,#eef2ff 50%, #3730a3 50%);"></button>
-								<button class="swatch h-9 rounded border border-slate-200"
-									title="Emerald" data-palette='{"bg":"#ecfdf5","text":"#065f46","author":"#047857"}'
-									style="background: linear-gradient(90deg,#ecfdf5 50%, #065f46 50%);"></button>
-								<button class="swatch h-9 rounded border border-slate-200"
-									title="Rose" data-palette='{"bg":"#fff1f2","text":"#9f1239","author":"#be123c"}'
-									style="background: linear-gradient(90deg,#fff1f2 50%, #9f1239 50%);"></button>
+						<!-- Actions (fixed on mobile, static on desktop) -->
+						<div class="z-40 p-4 bg-white/80 backdrop-blur-sm border-t border-slate-200 lg:static lg:bg-transparent lg:backdrop-blur-none lg:border-none lg:p-0">
+							<div class="lg:p-4 lg:rounded-xl lg:bg-white lg:border lg:border-slate-200 lg:shadow-sm">
+								<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+									<button id="downloadBtn"
+										class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800 transition shadow-sm">
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v12m0 0l-3.5-3.5M12 16l3.5-3.5M4 20h16"/>
+										</svg>
+										Download PNG (Hi-Res)
+									</button>
+									<button id="resetBtn"
+										class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition border border-slate-200">
+										Reset
+									</button>
+								</div>
 							</div>
 						</div>
 
-						<!-- Gradient Swatches -->
-						<div class="mt-4">
-							<label class="block text-xs text-slate-500 mb-2">Gradients</label>
-							<div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
-								<button class="grad-swatch h-9 rounded border border-slate-200"
-									title="Indigo → Purple"
-									data-gradient="linear-gradient(135deg,#6366f1,#a855f7)"></button>
-								<button class="grad-swatch h-9 rounded border border-slate-200"
-									title="Blue → Cyan"
-									data-gradient="linear-gradient(135deg,#3b82f6,#06b6d4)"></button>
-								<button class="grad-swatch h-9 rounded border border-slate-200"
-									title="Emerald → Teal"
-									data-gradient="linear-gradient(135deg,#10b981,#14b8a6)"></button>
-								<button class="grad-swatch h-9 rounded border border-slate-200"
-									title="Orange → Rose"
-									data-gradient="linear-gradient(135deg,#f59e0b,#f43f5e)"></button>
-								<button class="grad-swatch h-9 rounded border border-slate-200"
-									title="Slate → Zinc"
-									data-gradient="linear-gradient(135deg,#64748b,#3f3f46)"></button>
-							</div>
+						<!-- Help -->
+						<div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+							<h3 class="text-sm font-semibold mb-2">Tips</h3>
+							<ul class="text-xs text-slate-600 space-y-1.5">
+								<li>Keep quotes short for best readability.</li>
+								<li>Use contrasting text and background colors.</li>
+								<li>Gradients look great with white text.</li>
+								<li>For image backgrounds, adjust blur and overlay for readability.</li>
+								<li>Click "Download PNG" for a crisp, share-ready image.</li>
+							</ul>
 						</div>
-					</div>
-
-					<!-- Layout Tweaks -->
-					<div class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
-						<h3 class="text-sm font-semibold mb-3">Layout</h3>
-						<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-							<div>
-								<label class="flex items-center justify-between text-xs text-slate-500 mb-1">
-									<span>Padding</span>
-									<span><span id="padValue">10</span> %</span>
-								</label>
-								<input id="padRange" type="range" min="4" max="16" step="1" value="10"
-									class="w-full accent-indigo-600">
-							</div>
-							<div>
-								<label class="flex items-center justify-between text-xs text-slate-500 mb-1">
-									<span>Line height</span>
-									<span><span id="lhValue">1.25</span> ×</span>
-								</label>
-								<input id="lhRange" type="range" min="1.1" max="1.8" step="0.05" value="1.25"
-									class="w-full accent-indigo-600">
-							</div>
-						</div>
-						<div class="mt-3">
-							<label class="block text-xs text-slate-500 mb-1">Text alignment</label>
-							<div class="flex gap-2">
-								<button data-align="left" class="alignBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm">Left</button>
-								<button data-align="center" class="alignBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm">Center</button>
-								<button data-align="right" class="alignBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm">Right</button>
-							</div>
-						</div>
-					</div>
-
-					<!-- Help -->
-					<div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-						<h3 class="text-sm font-semibold mb-2">Tips</h3>
-						<ul class="text-xs text-slate-600 space-y-1.5">
-							<li>Keep quotes short for best readability.</li>
-							<li>Use contrasting text and background colors.</li>
-							<li>Gradients look great with white text.</li>
-							<li>Click “Download PNG” for a crisp, share-ready image.</li>
-						</ul>
 					</div>
 				</div>
 			</aside>
@@ -360,11 +415,37 @@
 		Built with ❤️ — Free to use. No data leaves your browser.
 	</footer>
 
+	<!-- Share Modal -->
+	<div id="shareModal" class="fixed inset-0 z-50 hidden">
+		<div class="modal-backdrop absolute inset-0 bg-black/20"></div>
+		<div class="relative z-10 flex items-center justify-center min-h-screen p-4">
+			<div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+				<div class="text-center">
+					<div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+						<svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+						</svg>
+					</div>
+					<h3 class="text-lg font-semibold text-slate-900 mb-2">Card Downloaded!</h3>
+					<p class="text-sm text-slate-600 mb-4">
+						Your beautiful card is ready to share! Tag us with <span class="font-semibold text-indigo-600">#CardGenio</span> when you post it.
+					</p>
+					<button id="closeShareModal"
+						class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">
+						Got it!
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<!-- App Logic -->
 	<script>
 		// Elements
 		const cardCanvas = document.getElementById('cardCanvas');
 		const bgLayer = document.getElementById('bgLayer');
+		const previewImage = document.getElementById('preview-image');
+		const previewOverlay = document.getElementById('preview-overlay');
 		const mainText = document.getElementById('mainText');
 		const authorText = document.getElementById('authorText');
 		const watermark = document.getElementById('watermark');
@@ -387,7 +468,9 @@
 		const authorColor = document.getElementById('authorColor');
 		const bgColor = document.getElementById('bgColor');
 
-		const bgModeRadios = document.querySelectorAll('input[name="bgMode"]');
+		const bgTypeRadios = document.querySelectorAll('input[name="bgType"]');
+		const solidPalettes = document.getElementById('solidPalettes');
+		const gradientPalettes = document.getElementById('gradientPalettes');
 		const paletteSwatches = document.querySelectorAll('.swatch');
 		const gradientSwatches = document.querySelectorAll('.grad-swatch');
 
@@ -400,28 +483,105 @@
 		const invertColorsBtn = document.getElementById('invertColors');
 		const ratioButtons = document.querySelectorAll('.ratioBtn');
 
+		// Image controls
+		const imageUpload = document.getElementById('imageUpload');
+		const imageBlur = document.getElementById('imageBlur');
+		const blurValue = document.getElementById('blurValue');
+		const overlayOpacity = document.getElementById('overlayOpacity');
+		const overlayValue = document.getElementById('overlayValue');
+		const removeImageBtn = document.getElementById('removeImageBtn');
+
+		// Profile picture controls
+		const profilePictureMode = document.getElementById('profilePictureMode');
+		const profilePictureControls = document.getElementById('profilePictureControls');
+		const profileSize = document.getElementById('profileSize');
+		const profileSizeValue = document.getElementById('profileSizeValue');
+
+		// Mode controls
+		const colorControls = document.getElementById('colorControls');
+		const imageControls = document.getElementById('imageControls');
+
+		// Modal
+		const shareModal = document.getElementById('shareModal');
+		const closeShareModal = document.getElementById('closeShareModal');
+
 		const downloadBtn = document.getElementById('downloadBtn');
 		const resetBtn = document.getElementById('resetBtn');
 
 		// State
-		let bgMode = 'solid'; // 'solid' | 'gradient'
+		let bgMode = 'color'; // 'color' | 'image'
+		let bgType = 'solid'; // 'solid' | 'gradient'
 		let currentGradient = ''; // css gradient string
 		let currentAspect = '1:1';
+		let uploadedImageDataUrl = '';
+		let activeBackgroundData = '#ffffff'; // Store the last selected color/gradient
+		let isProfilePicture = false;
 
 		// Helpers
 		function setBackground() {
-			if (bgMode === 'solid') {
-				bgLayer.style.background = bgColor.value;
+			if (bgMode === 'color') {
+				bgLayer.style.display = 'block';
+				previewImage.style.display = 'none';
+				previewOverlay.style.display = 'none';
+
+				if (bgType === 'solid') {
+					bgLayer.style.background = bgColor.value;
+					activeBackgroundData = bgColor.value;
+				} else {
+					bgLayer.style.background = currentGradient || "linear-gradient(135deg,#6366f1,#a855f7)";
+					activeBackgroundData = currentGradient || "linear-gradient(135deg,#6366f1,#a855f7)";
+				}
 			} else {
-				bgLayer.style.background = currentGradient || "linear-gradient(135deg,#6366f1,#a855f7)";
+				bgLayer.style.display = 'none';
+				previewImage.style.display = 'block';
+				previewOverlay.style.display = 'block';
+
+				if (uploadedImageDataUrl) {
+					previewImage.style.backgroundImage = `url(${uploadedImageDataUrl})`;
+					updateImageControls();
+				}
+			}
+		}
+
+		function updateImageControls() {
+			const blur = imageBlur ? imageBlur.value : 0;
+			const overlay = overlayOpacity ? overlayOpacity.value : 0;
+
+			if (blurValue) blurValue.textContent = blur;
+			if (overlayValue) overlayValue.textContent = overlay;
+
+			previewImage.style.filter = `blur(${blur}px)`;
+			previewOverlay.style.backgroundColor = `rgba(0, 0, 0, ${overlay / 100})`;
+
+			// Profile picture mode adjustments
+			if (isProfilePicture) {
+				previewImage.style.borderRadius = '50%';
+				previewImage.style.backgroundSize = 'cover';
+				previewImage.style.backgroundPosition = 'center';
+				// apply size if control present
+				if (profileSize) {
+					const s = profileSize.value;
+					previewImage.style.width = s + 'px';
+					previewImage.style.height = s + 'px';
+					previewImage.style.margin = 'auto';
+					// center content wrapper
+					const contentWrapper = cardCanvas.querySelector('.relative.z-10');
+					if (contentWrapper) contentWrapper.style.justifyContent = 'center';
+				}
+			} else {
+				previewImage.style.borderRadius = '0';
+				previewImage.style.width = '';
+				previewImage.style.height = '';
+				previewImage.style.margin = '';
 			}
 		}
 
 		function setAlignment(alignment) {
-			// Update alignment on container and text blocks
-			const justifyMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
-			mainText.parentElement.parentElement.style.alignItems =
-				alignment === 'left' ? 'flex-start' : alignment === 'right' ? 'flex-end' : 'center';
+			// Update alignment on the text container (the flex wrapper) and text blocks
+			const container = mainText.parentElement;
+			if (container && container.style) {
+				container.style.alignItems = alignment === 'left' ? 'flex-start' : alignment === 'right' ? 'flex-end' : 'center';
+			}
 			mainText.style.textAlign = alignment;
 			authorText.style.textAlign = alignment;
 
@@ -435,6 +595,30 @@
 					btn.classList.remove('bg-slate-100');
 				}
 			});
+		}
+
+		function setAspect(ratioStr) {
+			// ratioStr like "4:5" or "1.91:1"
+			const parts = ratioStr.split(':');
+			const w = parseFloat(parts[0]);
+			const h = parseFloat(parts[1]);
+			if (isFinite(w) && isFinite(h) && w > 0 && h > 0) {
+				cardCanvas.style.aspectRatio = `${w} / ${h}`;
+				currentAspect = ratioStr;
+				if (aspectLabel) {
+					aspectLabel.textContent = `Aspect ${currentAspect} • What you see is what you get`;
+				}
+				// Update active button styles
+				ratioButtons.forEach(btn => {
+					if (btn.getAttribute('data-ratio') === ratioStr) {
+						btn.classList.remove('bg-white');
+						btn.classList.add('bg-slate-100');
+					} else {
+						btn.classList.add('bg-white');
+						btn.classList.remove('bg-slate-100');
+					}
+				});
+			}
 		}
 
 		function clampFontSizeForSafety(sizePx) {
@@ -465,7 +649,10 @@
 
 			// Padding (percentage of container)
 			const padPct = parseInt(padRange.value, 10);
-			cardCanvas.querySelector('.relative.z-10').style.padding = padPct + '%';
+			const contentWrapper = cardCanvas.querySelector('.relative.z-10');
+			if (contentWrapper) {
+				contentWrapper.style.padding = padPct + '%';
+			}
 
 			// Line height (applies to both)
 			const lineH = parseFloat(lhRange.value);
@@ -474,30 +661,6 @@
 
 			// Background
 			setBackground();
-		}
-
-		function setAspect(ratioStr) {
-			// ratioStr like "4:5" or "1.91:1"
-			const parts = ratioStr.split(':');
-			const w = parseFloat(parts[0]);
-			const h = parseFloat(parts[1]);
-			if (isFinite(w) && isFinite(h) && w > 0 && h > 0) {
-				cardCanvas.style.aspectRatio = `${w} / ${h}`;
-				currentAspect = ratioStr;
-				if (aspectLabel) {
-					aspectLabel.textContent = `Aspect ${currentAspect} • What you see is what you get`;
-				}
-				// Update active button styles
-				ratioButtons.forEach(btn => {
-					if (btn.getAttribute('data-ratio') === ratioStr) {
-						btn.classList.remove('bg-white');
-						btn.classList.add('bg-slate-100');
-					} else {
-						btn.classList.add('bg-white');
-						btn.classList.remove('bg-slate-100');
-					}
-				});
-			}
 		}
 
 		function invertTextColors() {
@@ -514,6 +677,14 @@
 				const g = btn.getAttribute('data-gradient');
 				btn.style.background = g;
 			});
+		}
+
+		function showShareModal() {
+			shareModal.classList.remove('hidden');
+		}
+
+		function hideShareModal() {
+			shareModal.classList.add('hidden');
 		}
 
 		function attachEvents() {
@@ -537,13 +708,15 @@
 			textColor.addEventListener('input', updatePreview);
 			authorColor.addEventListener('input', updatePreview);
 			bgColor.addEventListener('input', () => {
-				if (bgMode === 'solid') updatePreview();
+				if (bgMode === 'color' && bgType === 'solid') {
+					updatePreview();
+				}
 			});
 
-			// Background mode
-			bgModeRadios.forEach(r => {
+			// Background type (solid/gradient)
+			bgTypeRadios.forEach(r => {
 				r.addEventListener('change', (e) => {
-					bgMode = e.target.value;
+					bgType = e.target.value;
 					updatePreview();
 				});
 			});
@@ -552,8 +725,11 @@
 			paletteSwatches.forEach(btn => {
 				btn.addEventListener('click', () => {
 					const pal = JSON.parse(btn.getAttribute('data-palette'));
-					bgMode = 'solid';
-					document.querySelector('input[name="bgMode"][value="solid"]').checked = true;
+					bgMode = 'color';
+					bgType = 'solid';
+					document.querySelector('input[name="bgType"][value="solid"]').checked = true;
+					colorControls.classList.remove('hidden');
+					imageControls.classList.add('hidden');
 					bgColor.value = pal.bg;
 					textColor.value = pal.text;
 					authorColor.value = pal.author;
@@ -565,12 +741,95 @@
 			setGradientPreviewStyles();
 			gradientSwatches.forEach(btn => {
 				btn.addEventListener('click', () => {
-					bgMode = 'gradient';
-					document.querySelector('input[name="bgMode"][value="gradient"]').checked = true;
+					bgMode = 'color';
+					bgType = 'gradient';
+					document.querySelector('input[name="bgType"][value="gradient"]').checked = true;
+					colorControls.classList.remove('hidden');
+					imageControls.classList.add('hidden');
 					currentGradient = btn.getAttribute('data-gradient');
 					updatePreview();
 				});
 			});
+
+			// Image upload
+			imageUpload.addEventListener('change', (e) => {
+				const file = e.target.files[0];
+				if (file) {
+					const reader = new FileReader();
+					reader.onload = (ev) => {
+						uploadedImageDataUrl = ev.target.result;
+
+						// Switch to image mode
+						bgMode = 'image';
+
+						// Show image controls, keep color controls for text color choices
+						imageControls.classList.remove('hidden');
+
+						// Reveal profile picture controls (optional)
+						if (profilePictureControls) profilePictureControls.classList.remove('hidden');
+
+						updatePreview();
+					};
+					reader.readAsDataURL(file);
+				}
+			});
+
+			// Image controls
+			if (imageBlur) imageBlur.addEventListener('input', updateImageControls);
+			if (overlayOpacity) overlayOpacity.addEventListener('input', updateImageControls);
+
+			// Remove image
+			if (removeImageBtn) removeImageBtn.addEventListener('click', () => {
+				uploadedImageDataUrl = '';
+				imageUpload.value = '';
+
+				// Switch back to color mode
+				bgMode = 'color';
+
+				// Restore the last selected background
+				if (activeBackgroundData) bgLayer.style.background = activeBackgroundData;
+
+				// Show color controls, hide image controls
+				colorControls.classList.remove('hidden');
+				imageControls.classList.add('hidden');
+
+				// Reset profile picture mode
+				isProfilePicture = false;
+				if (profilePictureMode) profilePictureMode.checked = false;
+				if (profilePictureControls) profilePictureControls.classList.add('hidden');
+
+				updatePreview();
+			});
+
+			// Profile picture mode
+			if (profilePictureMode) {
+				profilePictureMode.addEventListener('change', () => {
+					isProfilePicture = profilePictureMode.checked;
+
+					if (isProfilePicture) {
+						if (profilePictureControls) profilePictureControls.classList.remove('hidden');
+						previewImage.classList.add('profile-picture');
+						previewImage.style.borderRadius = '50%';
+						previewImage.style.margin = 'auto';
+					} else {
+						if (profilePictureControls) profilePictureControls.classList.add('hidden');
+						previewImage.classList.remove('profile-picture');
+						previewImage.style.borderRadius = '0';
+						previewImage.style.margin = '';
+						previewImage.style.width = '';
+						previewImage.style.height = '';
+					}
+
+					updatePreview();
+				});
+			}
+
+			if (profileSize) {
+				profileSize.addEventListener('input', () => {
+					if (profileSizeValue) profileSizeValue.textContent = profileSize.value;
+					updateImageControls();
+				});
+			}
 
 			// Layout
 			padRange.addEventListener('input', () => {
@@ -601,6 +860,14 @@
 				});
 			});
 
+			// Modal
+			if (closeShareModal) closeShareModal.addEventListener('click', hideShareModal);
+			if (shareModal) {
+				shareModal.addEventListener('click', (e) => {
+					if (e.target === shareModal) hideShareModal();
+				});
+			}
+
 			// Reset
 			resetBtn.addEventListener('click', () => {
 				quoteInput.value = 'Your inspiring quote goes here. Make it short and impactful.';
@@ -615,12 +882,25 @@
 				textColor.value = '#0f172a';
 				authorColor.value = '#334155';
 				bgColor.value = '#ffffff';
-				bgMode = 'solid';
-				document.querySelector('input[name="bgMode"][value="solid"]').checked = true;
+				bgMode = 'color';
+				bgType = 'solid';
+				document.querySelector('input[name="bgType"][value="solid"]').checked = true;
+				colorControls.classList.remove('hidden');
+				imageControls.classList.add('hidden');
 				currentGradient = '';
+				uploadedImageDataUrl = '';
+				imageUpload.value = '';
 
 				padRange.value = 10; padValue.textContent = '10';
 				lhRange.value = 1.25; lhValue.textContent = '1.25';
+				if (imageBlur) { imageBlur.value = 0; blurValue.textContent = '0'; }
+				if (overlayOpacity) { overlayOpacity.value = 0; overlayValue.textContent = '0'; }
+
+				// reset profile controls
+				isProfilePicture = false;
+				if (profilePictureMode) profilePictureMode.checked = false;
+				if (profilePictureControls) profilePictureControls.classList.add('hidden');
+				if (profileSize) { profileSize.value = 128; profileSizeValue.textContent = '128'; }
 
 				setAlignment('center');
 				setAspect('1:1');
@@ -659,6 +939,9 @@
 					document.body.appendChild(link);
 					link.click();
 					document.body.removeChild(link);
+
+					// show optional share modal for friendly UX
+					showShareModal();
 				} catch (err) {
 					console.error(err);
 					alert('Failed to generate image. Please try again.');
