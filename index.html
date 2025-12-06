@@ -397,6 +397,9 @@
 									<button data-align="left" class="alignBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm">Left</button>
 									<button data-align="center" class="alignBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm">Center</button>
 									<button data-align="right" class="alignBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm">Right</button>
+									<button data-align="top" class="alignBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm">Top</button>
+									<button data-align="bottom" class="alignBtn px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 text-sm">Bottom</button>
+
 								</div>
 							</div>
 						</div>
@@ -728,13 +731,16 @@
 		}
 
 		function setAlignment(alignment) {
-			// Update alignment on the text container (the flex wrapper) and text blocks
 			const container = mainText.parentElement;
 			if (container && container.style) {
-				container.style.alignItems = alignment === 'left' ? 'flex-start' : alignment === 'right' ? 'flex-end' : 'center';
+				if (alignment === 'left' || alignment === 'center' || alignment === 'right') {
+					container.style.alignItems = alignment === 'left' ? 'flex-start' : alignment === 'right' ? 'flex-end' : 'center';
+					mainText.style.textAlign = alignment;
+					authorText.style.textAlign = alignment;
+				} else if (alignment === 'top' || alignment === 'bottom') {
+					container.style.justifyContent = alignment === 'top' ? 'flex-start' : 'flex-end';
+				}
 			}
-			mainText.style.textAlign = alignment;
-			authorText.style.textAlign = alignment;
 
 			// Button states
 			alignButtons.forEach(btn => {
